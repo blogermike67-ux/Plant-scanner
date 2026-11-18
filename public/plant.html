@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Plant details - PlantAI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+  :root{--dark:#0b2118;--deep:#146c3c;--green:#22a65a;--muted:#5d6b63}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Poppins,system-ui,sans-serif;background:#fff;color:#14231b;line-height:1.6}
+  a{color:inherit;text-decoration:none}
+  [hidden]{display:none!important}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid #e8eeea}
+  .logo{font-size:22px;font-weight:600;color:var(--dark)}
+  nav ul{display:flex;gap:30px;list-style:none;font-size:14px}
+  main{max-width:1000px;margin:0 auto;padding:24px 30px 50px}
+  .back{font-size:13px;color:var(--muted)}
+  .top{display:grid;grid-template-columns:340px 1fr;gap:34px;margin-top:18px;align-items:center}
+  .top img{width:100%;border-radius:14px;display:block;max-height:340px;object-fit:cover}
+  h1{font-size:32px}
+  .sci{color:var(--muted);font-style:italic}
+  .desc{margin-top:12px;font-size:15px;color:#33443a}
+  .facts{display:flex;gap:30px;margin-top:18px;background:#eef7f1;border-radius:12px;padding:14px 18px;flex-wrap:wrap}
+  .facts small{display:block;color:var(--muted);font-size:12px}
+  .facts b{font-size:14px}
+  .box{background:#f6faf7;border:1px solid #e3ebe6;border-radius:14px;padding:20px;margin-top:26px}
+  .box h2{font-size:18px}
+  .box h2 span{margin-right:6px}
+  .dis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+  .dis div{background:#fff;border:1px solid #e3ebe6;border-radius:10px;padding:16px 10px;text-align:center;font-size:14px;font-weight:500}
+
+  /* plain english highlight */
+  .plain{background:linear-gradient(135deg,#e8f8ee,#f4fbf6);border:1.5px solid #9fdcb7}
+  .plain h3{font-size:14px;color:var(--deep);margin-top:14px;font-weight:600}
+  .plain p{font-size:15px;color:#24372c;margin-top:2px}
+  .plain ul,.list{margin:6px 0 0 20px;font-size:14px;color:#24372c}
+  .plain li,.list li{margin-top:4px}
+  .jargon{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:8px}
+  .jargon div{background:#fff;border:1px solid #cfe9d9;border-radius:10px;padding:10px 12px;font-size:13px}
+  .jargon b{color:var(--deep)}
+
+  /* grids of small info cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px}
+  .card{background:#fff;border:1px solid #e3ebe6;border-radius:10px;padding:14px}
+  .card small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .card b{display:block;font-size:14px;font-weight:500;margin-top:4px}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .tags span{background:#fff;border:1px solid #e3ebe6;border-radius:999px;padding:6px 14px;font-size:13px}
+  .fun div{background:#fff;border-left:4px solid var(--green);border-radius:8px;padding:10px 14px;margin-top:10px;font-size:14px}
+  .alert{background:#fff8e6;border:1px solid #f0dca0;border-radius:10px;padding:12px 14px;margin-top:14px;font-size:14px}
+
+  @media(max-width:700px){.top{grid-template-columns:1fr}.dis{grid-template-columns:1fr 1fr}}
+
+  @media(max-width:720px){
+    nav{padding:14px 16px!important;flex-wrap:wrap;gap:10px}
+    nav ul{gap:14px!important;font-size:13px!important;flex-wrap:wrap}
+    .logo{font-size:20px!important}
+  }
+  @media(max-width:700px){
+    main{padding:18px 16px 36px}
+    h1{font-size:25px}
+    .facts{gap:16px}
+    .box{padding:16px}
+  }
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="logo" href="index.html">PlantAI</a>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="scans.html">Your Scans</a></li>
+      <li><a href="privacy.html">Privacy</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <a class="back" href="results.html">← Back to Results</a>
+
+    <p id="empty" hidden style="margin-top:20px">No plant selected. <a href="plantAi.html" style="color:var(--deep)">Scan a plant</a>.</p>
+
+    <div id="view" hidden>
+      <div class="top">
+        <img id="photo" alt="Your plant">
+        <div>
+          <h1 id="name"></h1>
+          <div class="sci" id="sci"></div>
+          <p class="desc" id="desc"></p>
+          <div class="facts">
+            <div><small>Family</small><b id="family"></b></div>
+            <div><small>Growth Type</small><b id="growth"></b></div>
+            <div><small>Ideal Temperature</small><b id="temp"></b></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLAIN ENGLISH -->
+      <div class="box plain" id="plainBox" hidden>
+        <h2><span>💬</span>In Plain English</h2>
+        <div id="plantSumWrap" hidden><h3>About this plant</h3><p id="plantSum"></p></div>
+        <div id="healthSumWrap" hidden><h3>How is your plant doing?</h3><p id="healthSum"></p></div>
+        <div id="todayWrap" hidden><h3>Do this today</h3><ul id="today"></ul></div>
+        <div id="jargonWrap" hidden><h3>Hard words, made easy</h3><div class="jargon" id="jargon"></div></div>
+      </div>
+
+      <!-- CARE GUIDE -->
+      <div class="box" id="careBox" hidden>
+        <h2><span>🌱</span>Care Guide</h2>
+        <div class="cards" id="care"></div>
+      </div>
+
+      <!-- QUICK FACTS -->
+      <div class="box" id="factsBox" hidden>
+        <h2><span>📋</span>Quick Facts</h2>
+        <div class="cards" id="quick"></div>
+      </div>
+
+      <!-- USES -->
+      <div class="box" id="usesBox" hidden>
+        <h2><span>✨</span>Uses &amp; Benefits</h2>
+        <ul class="list" id="uses"></ul>
+      </div>
+
+      <div class="box" id="disBox">
+        <h2><span>🦠</span>Common Diseases</h2>
+        <div class="dis" id="dis"></div>
+      </div>
+
+      <!-- PESTS -->
+      <div class="box" id="pestBox" hidden>
+        <h2><span>🐛</span>Common Pests</h2>
+        <div class="tags" id="pests"></div>
+      </div>
+
+      <!-- FUN FACTS -->
+      <div class="box" id="funBox" hidden>
+        <h2><span>🤩</span>Did You Know?</h2>
+        <div class="fun" id="fun"></div>
+        <div class="alert" id="expert" hidden></div>
+      </div>
+    </div>
+  </main>
+
+<script>
+const scans = JSON.parse(localStorage.getItem("scans") || "[]");
+const scan = scans[Number(localStorage.getItem("open") || 0)];
+const $ = (id) => document.getElementById(id);
+
+// helpers: every section hides itself when the AI gave no data (old scans stay working)
+const has = (v) => v !== null && v !== undefined && String(v).trim() !== "" && String(v).toLowerCase() !== "null";
+
+function fillList(listId, boxId, items, tag) {
+  const clean = (items || []).filter(has);
+  if (boxId) $(boxId).hidden = clean.length === 0;
+  clean.forEach(text => {
+    const el = document.createElement(tag);
+    el.textContent = text;
+    $(listId).appendChild(el);
+  });
+  return clean.length > 0;
+}
+
+function fillCards(containerId, boxId, rows) {
+  const shown = rows.filter(([, value]) => has(value));
+  $(boxId).hidden = shown.length === 0;
+  shown.forEach(([label, value]) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const s = document.createElement("small");
+    s.textContent = label;
+    const b = document.createElement("b");
+    b.textContent = value;
+    card.append(s, b);
+    $(containerId).appendChild(card);
+  });
+}
+
+function showText(wrapId, textId, value) {
+  if (!has(value)) return false;
+  $(textId).textContent = value;
+  $(wrapId).hidden = false;
+  return true;
+}
+
+if (!scan || !scan.result) {
+  $("empty").hidden = false;
+} else {
+  const r = scan.result;
+  const p = r.plant || {};
+  $("view").hidden = false;
+  $("photo").src = scan.image;
+  $("name").textContent = p.name || "Unknown plant";
+  $("sci").textContent = p.scientific_name || "";
+  $("desc").textContent = p.description || "";
+  $("family").textContent = p.family || "-";
+  $("growth").textContent = p.growth_type || "-";
+  $("temp").textContent = p.ideal_temperature || "-";
+
+  // plain english
+  const pe = r.plain_english || {};
+  const a = showText("plantSumWrap", "plantSum", pe.plant_summary);
+  const b = showText("healthSumWrap", "healthSum", pe.health_summary);
+  const c = fillList("today", null, pe.do_this_today, "li");
+  $("todayWrap").hidden = !c;
+
+  const words = (pe.jargon_buster || []).filter(j => j && has(j.term) && has(j.meaning));
+  words.forEach(j => {
+    const d = document.createElement("div");
+    const t = document.createElement("b");
+    t.textContent = j.term + ": ";
+    d.append(t, document.createTextNode(j.meaning));
+    $("jargon").appendChild(d);
+  });
+  $("jargonWrap").hidden = words.length === 0;
+  $("plainBox").hidden = !(a || b || c || words.length);
+
+  // care guide
+  const care = r.care || {};
+  fillCards("care", "careBox", [
+    ["💧 Water", care.water],
+    ["☀️ Sunlight", care.sunlight],
+    ["🪴 Soil", care.soil],
+    ["💨 Humidity", care.humidity],
+    ["🧪 Fertilizer", care.fertilizer],
+    ["📅 Best time to plant", care.best_time_to_plant],
+    ["🌸 Bloom / harvest", care.harvest_or_bloom]
+  ]);
+
+  // quick facts
+  const q = r.quick_facts || {};
+  fillCards("quick", "factsBox", [
+    ["Origin", q.origin],
+    ["Lifespan", q.lifespan],
+    ["Typical size", q.height],
+    ["Safe for pets & people?", q.toxicity],
+    ["Edible?", q.edible]
+  ]);
+
+  fillList("uses", "usesBox", r.uses, "li");
+
+  // diseases (original section)
+  const diseases = r.common_diseases || [];
+  $("disBox").hidden = diseases.length === 0;
+  fillList("dis", null, diseases, "div");
+
+  // pests
+  fillList("pests", "pestBox", r.common_pests, "span");
+
+  // fun facts + expert note
+  const hasFun = fillList("fun", "funBox", r.fun_facts, "div");
+  const expert = r.health && r.health.when_to_call_expert;
+  if (has(expert)) {
+    $("expert").textContent = "👩‍🌾 When to ask an expert: " + expert;
+    $("expert").hidden = false;
+    $("funBox").hidden = false;
+  }
+}
+</script>
+</body>
+</html>
