@@ -18,7 +18,7 @@ if (fs.existsSync(envPath)) {
       process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
       names.push(m[1]);
     } else {
-      console.log(`.env line ${i + 1} is not NAME=value (it must start with OPENAI_API_KEY=)`);
+      console.log(`.env line ${i + 1} is not NAME=value (it must start with GEMINI_API_KEY=)`);
     }
   });
   console.log(".env variable names found:", names.length ? names.join(", ") : "none");
@@ -36,6 +36,75 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
+// ======================================================================
+//  SHARED GEMINI HELPERS (used by every route below)
+// ======================================================================
+
+// models to try in order (names change often: see the Models page in the Gemini docs)
+const MODELS = [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter(Boolean);
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// Tries each model. If one is busy (500/503) it waits and retries, then moves to the next model.
+// Never throws: returns { ok:true, text } or { ok:false, status, error }
+async function callGemini(body) {
+  let lastStatus = 500, lastMessage = "", busy = false;
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": process.env.GEMINI_API_KEY
+          },
+          body: JSON.stringify(body)
+        }
+      );
+      const d = await r.json();
+      if (r.ok) {
+        return { ok: true, text: d.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "" };
+      }
+      lastStatus = r.status;
+      lastMessage = d.error?.message || "";
+      console.log(`Gemini ${model} attempt ${attempt + 1}: ${r.status} ${lastMessage.slice(0, 80)}`);
+
+      if ([500, 503, 429].includes(r.status)) busy = true;
+      if (r.status === 503 || r.status === 500) {   // busy: wait a little, then retry the same model
+        await sleep(1500 * (attempt + 1));
+        continue;
+      }
+      if (r.status === 404 || r.status === 429) break;   // unknown model or its quota is used: next model
+      return { ok: false, status: r.status, error: lastMessage || "Gemini request failed" };
+    }
+  }
+  return {
+    ok: false,
+    status: busy ? 503 : lastStatus,
+    error: busy
+      ? "The AI is very busy right now. Please wait a minute and try again."
+      : (lastMessage || "Gemini request failed")
+  };
+}
+
+const parseJSON = (t) => JSON.parse((t || "").replace(/^```(?:json)?|```$/g, "").trim());
+
+// returns true (and answers the request) when the key is missing
+function missingKey(res) {
+  if (process.env.GEMINI_API_KEY) return false;
+  res.status(500).json({ error: "GEMINI_API_KEY is missing. Check your .env file." });
+  return true;
+}
+
+// the page sends "data:image/jpeg;base64,XXXX"; Gemini wants the type and the data separately
+function splitImage(dataUrl) {
+  const m = /^data:(image\/[\w.+-]+);base64,(.+)$/.exec(dataUrl || "");
+  return m ? { mimeType: m[1], base64: m[2] } : null;
+}
+
+// ======================================================================
+//  1. SCAN: identify plant + disease        (plantAi.html -> results.html)
+// ======================================================================
 const PROMPT = `You are a plant pathologist and a friendly gardening teacher. Look at this photo and reply with ONLY a JSON object (no other text) in exactly this shape:
 {
   "is_plant": true,
@@ -87,85 +156,146 @@ const PROMPT = `You are a plant pathologist and a friendly gardening teacher. Lo
 }
 "confidence" is a number from 0 to 100 for how sure you are. Use simple words everywhere. Never invent facts: if you do not know something, use null. If the photo is not a plant, reply {"is_plant": false}.`;
 
-// models to try in order (names change often: see the Models page in the Gemini docs)
-const MODELS = [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter(Boolean);
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
 app.post("/api/identify", async (req, res) => {
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: "GEMINI_API_KEY is missing. Check your .env file." });
-    }
+    if (missingKey(res)) return;
+    const img = splitImage(req.body.image);
+    if (!img) return res.status(400).json({ error: "No valid image sent" });
 
-    // the page sends "data:image/jpeg;base64,XXXX"; Gemini wants the type and the data separately
-    const match = /^data:(image\/[\w.+-]+);base64,(.+)$/.exec(req.body.image || "");
-    if (!match) {
-      return res.status(400).json({ error: "No valid image sent" });
-    }
-    const [, mimeType, base64] = match;
+    const out = await callGemini({
+      contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: img.mimeType, data: img.base64 } }] }],
+      generationConfig: { responseMimeType: "application/json" } // forces JSON back
+    });
+    if (!out.ok) return res.status(out.status).json({ error: out.error });
 
-    let data, lastStatus = 500, lastMessage = "", sawBusy = false;
-
-    // Try each model. If one is busy (503) wait and retry it, then move on to the next model.
-    outer:
-    for (const model of MODELS) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": process.env.GEMINI_API_KEY
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: PROMPT },
-                  { inline_data: { mime_type: mimeType, data: base64 } }
-                ]
-              }],
-              generationConfig: { responseMimeType: "application/json" } // forces JSON back
-            })
-          }
-        );
-        data = await r.json();
-        lastStatus = r.status;
-        lastMessage = data.error?.message || "";
-
-        if (r.ok) break outer;                       // success
-        console.log(`Gemini ${model} attempt ${attempt + 1}: ${r.status} ${lastMessage.slice(0, 80)}`);
-
-        if ([500, 503, 429].includes(r.status)) sawBusy = true;
-        if (r.status === 503 || r.status === 500) {  // busy: wait a little, then retry the same model
-          await sleep(1500 * (attempt + 1));
-          continue;
-        }
-        if (r.status === 404 || r.status === 429) break;  // unknown model or its quota is used: next model
-        return res.status(r.status).json({ error: lastMessage || "Gemini request failed" });
-      }
-    }
-
-    if (!data || data.error) {
-      const busy = sawBusy;
-      return res.status(busy ? 503 : lastStatus).json({
-        error: busy
-          ? "The AI is very busy right now. Please wait a minute and try again."
-          : (lastMessage || "Gemini request failed")
-      });
-    }
-
-    // pull the text out of the response, then turn it into an object
-    const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("");
-
-    let result;
     try {
-      result = JSON.parse((text || "").replace(/^```(?:json)?|```$/g, "").trim());
+      res.json({ result: parseJSON(out.text) });
     } catch {
-      return res.status(502).json({ error: "The AI answer could not be read. Please try again." });
+      res.status(502).json({ error: "The AI answer could not be read. Please try again." });
     }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
-    res.json({ result });
+// ======================================================================
+//  2. PLANT DOCTOR CHAT                                   (doctor.html)
+// ======================================================================
+const DOCTOR_PROMPT = `You are Plant Doctor, a friendly plant pathologist chatting with a home gardener or small farmer.
+Use simple words and short paragraphs. Ask ONE short follow-up question when you need more detail (plant, symptoms, watering, sunlight, when it started).
+When you have enough detail, give the most likely cause, then 2 to 4 clear steps to fix it. Never invent facts; say when you are unsure.
+Only answer questions about plants, gardening, pests and growing. For anything else, politely steer back to plants.
+For serious or spreading problems, suggest a local agriculture office. Keep replies under 150 words and do not use markdown symbols like ** or #.`;
+
+app.post("/api/chat", async (req, res) => {
+  try {
+    if (missingKey(res)) return;
+    const { messages = [], plant = "" } = req.body;
+    const contents = messages.slice(-20).map(m => ({
+      role: m.role === "user" ? "user" : "model",
+      parts: [{ text: String(m.text || "").slice(0, 2000) }]
+    }));
+    while (contents.length && contents[0].role === "model") contents.shift();   // Gemini wants the first turn from the user
+    if (!contents.length || contents[contents.length - 1].role !== "user") {
+      return res.status(400).json({ error: "No question sent" });
+    }
+    const system = DOCTOR_PROMPT + (plant ? ` The person is asking about this plant: ${String(plant).slice(0, 80)}.` : "");
+    const out = await callGemini({ systemInstruction: { parts: [{ text: system }] }, contents });
+    if (!out.ok) return res.status(out.status).json({ error: out.error });
+    res.json({ reply: out.text.trim() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ======================================================================
+//  3. PEST IDENTIFICATION                                  (pests.html)
+// ======================================================================
+const PEST_PROMPT = `You are an entomologist who helps gardeners. Look at this photo and reply with ONLY a JSON object in exactly this shape:
+{
+  "is_insect": true,
+  "name": "common name",
+  "scientific_name": "Genus species or null",
+  "verdict": "Harmful, Beneficial or Neutral",
+  "confidence": 85,
+  "summary": "2 simple sentences: what it is and whether the gardener should worry",
+  "what_it_does": ["2 to 3 short points on what it does to plants or to other insects"],
+  "signs": ["2 to 4 signs of its presence on a plant (or what it looks like if it is beneficial)"],
+  "do_this": ["2 to 4 simple actions to take today"],
+  "natural_control": ["2 to 3 safe, natural ways to control it (for a beneficial insect, how to attract and keep it)"],
+  "protect_note": "one sentence, e.g. which beneficial insects to avoid harming, or null"
+}
+"confidence" is 0 to 100. Use simple words. Never invent facts. If you cannot tell the species, give the closest group and lower the confidence.
+If the photo has no insect or similar creature (spider, beetle, caterpillar, snail all count), reply {"is_insect": false}.`;
+
+app.post("/api/pest", async (req, res) => {
+  try {
+    if (missingKey(res)) return;
+    const img = splitImage(req.body.image);
+    if (!img) return res.status(400).json({ error: "No valid image sent" });
+
+    const out = await callGemini({
+      contents: [{ parts: [{ text: PEST_PROMPT }, { inline_data: { mime_type: img.mimeType, data: img.base64 } }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    });
+    if (!out.ok) return res.status(out.status).json({ error: out.error });
+
+    try {
+      res.json({ result: parseJSON(out.text) });
+    } catch {
+      res.status(502).json({ error: "The AI answer could not be read. Please try again." });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ======================================================================
+//  4. PLANT COMPATIBILITY                                   (compat.html)
+// ======================================================================
+const COMPAT_PROMPT = (a, b) => `You are a companion-planting expert. Decide whether these two plants grow well together in the same garden bed or pot:
+Plant 1: ${a}
+Plant 2: ${b}
+Reply with ONLY a JSON object in exactly this shape:
+{
+  "is_valid": true,
+  "score": 80,
+  "verdict": "Great match, Good match, Risky or Bad match",
+  "summary": "2 to 3 simple sentences explaining the verdict",
+  "benefits": ["2 to 4 short ways they help each other (pests, shade, nutrients, pollination, space)"],
+  "risks": ["2 to 4 short problems (competition, shared diseases, allelopathy, different water needs), or an empty list if none"],
+  "tips": {
+    "spacing": "short advice",
+    "sunlight": "short advice",
+    "water": "short advice",
+    "soil": "short advice"
+  },
+  "alternatives": ["2 to 4 plants that grow better next to Plant 1 when the score is below 70, or an empty list"]
+}
+"score" is 0 to 100 (70+ good, 40-69 risky, below 40 bad). Use simple words. Never invent facts.
+If either name is not a real plant, reply {"is_valid": false}.`;
+
+app.post("/api/compat", async (req, res) => {
+  try {
+    if (missingKey(res)) return;
+    const a = String(req.body.plant1 || "").trim().slice(0, 60);
+    const b = String(req.body.plant2 || "").trim().slice(0, 60);
+    if (!a || !b) return res.status(400).json({ error: "Send two plant names" });
+
+    const out = await callGemini({
+      contents: [{ parts: [{ text: COMPAT_PROMPT(a, b) }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    });
+    if (!out.ok) return res.status(out.status).json({ error: out.error });
+
+    try {
+      res.json({ result: parseJSON(out.text) });
+    } catch {
+      res.status(502).json({ error: "The AI answer could not be read. Please try again." });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Plant Compatibility - PlantAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--dark:#0b2118;--deep:#146c3c;--green:#22a65a;--mint:#6ee7a0;--leaf:#4ade80;--soil:#3a2a1c;--good:#6ee7a0;--mid:#f2c14e;--bad:#ff8a73}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Poppins,system-ui,sans-serif;color:#fff;min-height:100vh;background:radial-gradient(circle at 20% 0%,#14442e 0%,transparent 55%),radial-gradient(circle at 90% 100%,#1b3a1f 0%,transparent 50%),var(--dark)}
+a{color:inherit;text-decoration:none}
+button,input{font:inherit}
+button{border:0;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+nav{display:flex;align-items:center;justify-content:space-between;padding:20px 40px;border-bottom:1px solid rgba(255,255,255,.1)}
+.logo{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:600}
+.logo .i{width:28px;height:28px;color:var(--leaf)}
+nav ul{display:flex;gap:28px;list-style:none;font-size:14px;color:#cfe3d6}
+nav li a.on{color:#fff;font-weight:600;border-bottom:2px solid var(--leaf);padding-bottom:4px}
+
+main{max-width:1000px;margin:0 auto;padding:44px 28px 70px}
+h1{font-family:Fraunces,serif;font-size:clamp(34px,5vw,52px);line-height:1.08;text-align:center}
+.sub{text-align:center;color:#bcd6c5;font-size:15px;line-height:1.6;margin:12px auto 36px;max-width:520px}
+
+.pair{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center}
+.field{position:relative}
+.field .i{position:absolute;left:18px;top:50%;margin-top:-10px;color:var(--green)}
+.field input{width:100%;height:62px;padding:0 20px 0 50px;border-radius:16px;border:2px solid transparent;background:#f3fbf5;color:var(--dark);font-size:17px;font-weight:500;outline:none}
+.field input::placeholder{color:#7d9186;font-weight:400}
+.field input:focus{border-color:var(--leaf);box-shadow:0 0 0 5px rgba(74,222,128,.22)}
+.amp{width:54px;height:54px;border-radius:50%;background:var(--green);display:grid;place-items:center;font-family:Fraunces,serif;font-size:26px;border:3px solid rgba(255,255,255,.85)}
+#go{display:block;margin:26px auto 0;height:56px;padding:0 44px;border-radius:999px;background:var(--mint);color:var(--dark);font-size:17px;font-weight:600;transition:transform .15s,background .15s}
+#go:hover:not(:disabled){background:var(--leaf);transform:translateY(-2px)}
+#status{text-align:center;margin-top:16px;min-height:22px;font-size:14px;color:#bcd6c5}
+#status.err{color:var(--bad)}
+
+#res{margin-top:34px}
+.score{display:flex;align-items:center;gap:28px;padding:28px 32px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14)}
+.ring{--p:0;--c:var(--good);flex:none;width:118px;height:118px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),rgba(255,255,255,.12) 0);display:grid;place-items:center;transition:--p 1s}
+.ring div{width:92px;height:92px;border-radius:50%;background:var(--dark);display:grid;place-items:center;text-align:center;font-family:Fraunces,serif;font-size:30px;line-height:1}
+.ring small{display:block;font-family:Poppins,sans-serif;font-size:11px;color:#a9c4b3;margin-top:2px}
+.score h2{font-family:Fraunces,serif;font-size:28px;margin-bottom:6px}
+.score p{font-size:14.5px;line-height:1.7;color:#dbeadf}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.box{padding:22px 24px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.box.good{border-left:4px solid var(--good)}.box.risk{border-left:4px solid var(--bad)}.box.wide{grid-column:1/-1}
+.box h3{font-size:14px;font-weight:600;margin-bottom:10px;color:#e8f5ec}
+.box ul{margin-left:18px;font-size:14px;line-height:1.8;color:#cfe3d6}
+.tips{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.tips b{display:block;font-size:12px;font-weight:500;color:var(--leaf);margin-bottom:3px}
+.tips span{font-size:13.5px;line-height:1.55;color:#dbeadf}
+@media(max-width:760px){
+  nav{padding:14px 16px;flex-wrap:wrap;gap:10px}nav ul{gap:14px;flex-wrap:wrap;font-size:13px}
+  main{padding:30px 16px 50px}
+  .pair{grid-template-columns:1fr}.amp{justify-self:center}
+  .score{flex-direction:column;text-align:center;padding:24px 20px}
+  .grid,.tips{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="index.html"><svg class="i" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>Luvplant</a>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+		<li><a href="Doctor.html">Doctor</a></li>
+        <li><a href="combat.html">growing plants together</a></li>
+        <li><a href="pets.html">pets</a></li>
+		<li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="#">Features</a></li>
+        <li><a href="#">Help</a></li>
+  </ul>
+</nav>
+
+<main>
+  <h1>Will these two plants get along?</h1>
+  <p class="sub">Type two plants you want to grow in the same bed or pot. We will tell you if they help each other or fight for space.</p>
+
+  <div class="pair">
+    <div class="field">
+      <svg class="i" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/></svg>
+      <input id="p1" placeholder="First plant, e.g. tomato" maxlength="60" aria-label="First plant">
+    </div>
+    <div class="amp">&amp;</div>
+    <div class="field">
+      <svg class="i" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/></svg>
+      <input id="p2" placeholder="Second plant, e.g. basil" maxlength="60" aria-label="Second plant">
+    </div>
+  </div>
+  <button id="go">Check compatibility</button>
+  <div id="status"></div>
+  <div id="res"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const p1 = $("p1"), p2 = $("p2"), go = $("go"), status = $("status"), res = $("res");
+
+function setStatus(t, bad){ status.textContent = t; status.className = bad ? "err" : ""; }
+function el(tag, cls, text){
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function box(cls, title, items){
+  if (!items || !items.length) return null;
+  const b = el("div", "box " + cls);
+  b.appendChild(el("h3", "", title));
+  const ul = el("ul");
+  items.forEach(t => ul.appendChild(el("li", "", t)));
+  b.appendChild(ul);
+  return b;
+}
+
+function show(r){
+  res.innerHTML = "";
+  const score = Math.max(0, Math.min(100, Math.round(Number(r.score) || 0)));
+  const color = score >= 70 ? "var(--good)" : score >= 40 ? "var(--mid)" : "var(--bad)";
+
+  const top = el("div", "score");
+  const ring = el("div", "ring");
+  ring.style.setProperty("--c", color);
+  ring.style.setProperty("--p", score);
+  const inner = el("div");
+  inner.appendChild(document.createTextNode(score + "%"));
+  inner.appendChild(el("small", "", "match"));
+  ring.appendChild(inner);
+  top.appendChild(ring);
+  const txt = el("div");
+  txt.appendChild(el("h2", "", r.verdict || "Result"));
+  txt.appendChild(el("p", "", r.summary || ""));
+  top.appendChild(txt);
+  res.appendChild(top);
+
+  const g = el("div", "grid");
+  [box("good", "What they give each other", r.benefits), box("risk", "What could go wrong", r.risks)]
+    .forEach(b => b && g.appendChild(b));
+
+  const t = r.tips || {};
+  const tipBox = el("div", "box wide");
+  tipBox.appendChild(el("h3", "", "If you plant them together"));
+  const tg = el("div", "tips");
+  [["Spacing", t.spacing], ["Sunlight", t.sunlight], ["Water", t.water], ["Soil", t.soil]].forEach(([k, v]) => {
+    if (!v) return;
+    const c = el("div");
+    c.appendChild(el("b", "", k));
+    c.appendChild(el("span", "", v));
+    tg.appendChild(c);
+  });
+  tipBox.appendChild(tg);
+  g.appendChild(tipBox);
+
+  const alt = box("wide", "Good neighbours to try instead", r.alternatives);
+  if (alt) g.appendChild(alt);
+  res.appendChild(g);
+  res.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function check(){
+  const a = p1.value.trim(), b = p2.value.trim();
+  if (!a || !b) { setStatus("Type both plants first.", true); return; }
+  go.disabled = true;
+  setStatus("Asking the garden expert...");
+  res.innerHTML = "";
+  try {
+    const r = await fetch("/api/compat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plant1: a, plant2: b })
+    });
+    const data = await r.json();
+    if (!r.ok) { setStatus(data.error || "Something went wrong.", true); return; }
+    if (data.result && data.result.is_valid === false) {
+      setStatus("One of these doesn't look like a plant. Check the spelling and try again.", true);
+      return;
+    }
+    setStatus("");
+    show(data.result);
+  } catch {
+    setStatus("Could not reach the server. Is it running?", true);
+  } finally {
+    go.disabled = false;
+  }
+}
+
+go.addEventListener("click", check);
+[p1, p2].forEach(i => i.addEventListener("keydown", e => { if (e.key === "Enter") check(); }));
+</script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Plant Doctor - PlantAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--dark:#0b2118;--deep:#146c3c;--green:#22a65a;--mint:#6ee7a0;--paper:#f3fbf5;--muted:#5d6b63}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Poppins,system-ui,sans-serif;background:#fff;color:#14231b;min-height:100vh}
+a{color:inherit;text-decoration:none}
+button,input,textarea{font:inherit}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid #e8eeea}
+.logo{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:600;color:var(--dark)}
+.logo .i{width:28px;height:28px;color:var(--green)}
+nav ul{display:flex;gap:28px;list-style:none;font-size:14px}
+nav li a.on{color:var(--deep);font-weight:600;border-bottom:2px solid var(--green);padding-bottom:4px}
+
+.wrap{max-width:1180px;margin:0 auto;padding:28px 40px;display:grid;grid-template-columns:320px 1fr;gap:36px;height:calc(100vh - 73px)}
+.side{display:flex;flex-direction:column;gap:14px;overflow:auto}
+h1{font-family:Fraunces,serif;font-size:38px;line-height:1.1;color:var(--dark)}
+.side>p{font-size:14px;line-height:1.6;color:#33443a}
+label{font-size:13px;font-weight:500;margin-top:6px}
+#plant{height:44px;border:1.5px solid #cfe3d6;border-radius:10px;padding:0 14px;outline:none;background:#fff}
+#plant:focus,#msg:focus{border-color:var(--green)}
+.chips{display:flex;flex-direction:column;gap:8px}
+.chips button{text-align:left;background:var(--paper);border:1px solid #d6eadd;border-radius:10px;padding:10px 14px;font-size:13px;cursor:pointer;color:var(--dark)}
+.chips button:hover{background:#e3f6e9}
+#clear{margin-top:auto;background:none;border:0;color:var(--muted);font-size:13px;text-align:left;cursor:pointer;text-decoration:underline}
+
+.chat{display:flex;flex-direction:column;min-height:0;border:1px solid #dcebe1;border-radius:18px;background:var(--paper);overflow:hidden}
+.head{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--dark);color:#fff}
+.head .dot{width:38px;height:38px;border-radius:50%;background:var(--mint);color:var(--dark);display:grid;place-items:center}
+.head b{display:block;font-weight:600;font-size:15px}
+.head small{font-size:12px;color:#a9d8bc}
+#log{flex:1;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:12px}
+.m{max-width:78%;padding:12px 16px;border-radius:16px;font-size:14.5px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.m.bot{background:#fff;border:1px solid #dcebe1;border-bottom-left-radius:4px;align-self:flex-start}
+.m.me{background:var(--deep);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+.m.err{background:#fdecec;border:1px solid #f3c4c4;color:#8a2020}
+.typing{display:flex;gap:5px;padding:16px}
+.typing span{width:7px;height:7px;border-radius:50%;background:var(--green);animation:b 1s infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+.bar{display:flex;gap:10px;padding:14px;border-top:1px solid #dcebe1;background:#fff}
+#msg{flex:1;resize:none;height:48px;max-height:120px;border:1.5px solid #cfe3d6;border-radius:14px;padding:12px 16px;outline:none;font-size:14px}
+#send{width:48px;height:48px;border-radius:50%;border:0;background:var(--green);color:#fff;cursor:pointer;display:grid;place-items:center}
+#send:disabled{opacity:.5;cursor:wait}
+@media(prefers-reduced-motion:reduce){.typing span{animation:none}}
+@media(max-width:820px){
+  nav{padding:14px 16px;flex-wrap:wrap;gap:10px}nav ul{gap:14px;flex-wrap:wrap;font-size:13px}
+  .wrap{grid-template-columns:1fr;height:auto;padding:18px 16px;gap:20px}
+  h1{font-size:30px}.chat{height:70vh}.m{max-width:90%}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="index.html"><svg class="i" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>Luvplant</a>
+  <ul>
+     <li><a href="index.html">Home</a></li>
+		<li><a href="Doctor.html">Doctor</a></li>
+        <li><a href="combat.html">growing plants together</a></li>
+        <li><a href="pets.html">pets</a></li>
+		<li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="#">Features</a></li>
+        <li><a href="#">Help</a></li>
+  </ul>
+</nav>
+
+<main class="wrap">
+  <aside class="side">
+    <h1>Ask the plant doctor</h1>
+    <p>Describe what you see: yellow leaves, spots, drooping, strange growth. Tell the doctor which plant it is for better answers.</p>
+    <label for="plant">Which plant?</label>
+    <input id="plant" placeholder="Tomato, monstera, maize..." maxlength="80">
+    <label>Try asking</label>
+    <div class="chips">
+      <button data-q="The leaves are turning yellow from the bottom up. What is wrong?">Leaves turning yellow</button>
+      <button data-q="There are brown spots on the leaves with a yellow ring. What is it?">Brown spots on leaves</button>
+      <button data-q="The plant keeps drooping even after I water it. Why?">Drooping after watering</button>
+      <button data-q="White powder is growing on the leaves. How do I treat it?">White powder on leaves</button>
+    </div>
+    <button id="clear">Clear this conversation</button>
+  </aside>
+
+  <section class="chat">
+    <div class="head">
+      <span class="dot"><svg class="i" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/></svg></span>
+      <div><b>Plant Doctor</b><small>Answers in simple words</small></div>
+    </div>
+    <div id="log"></div>
+    <div class="bar">
+      <textarea id="msg" placeholder="Describe the problem..." rows="1"></textarea>
+      <button id="send" aria-label="Send"><svg class="i" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const log = $("log"), msg = $("msg"), send = $("send"), plant = $("plant");
+const GREETING = "Hello! I'm your plant doctor. Tell me which plant you have and what looks wrong, and we will work it out together.";
+
+// conversation is kept in localStorage so it survives a page reload
+let history = [];
+try { history = JSON.parse(localStorage.getItem("doctorChat") || "[]"); } catch { history = []; }
+plant.value = localStorage.getItem("doctorPlant") || "";
+
+function save(){
+  try { localStorage.setItem("doctorChat", JSON.stringify(history.slice(-30))); } catch {}
+}
+
+function bubble(text, cls){
+  const d = document.createElement("div");
+  d.className = "m " + cls;
+  d.textContent = text;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+  return d;
+}
+
+function render(){
+  log.innerHTML = "";
+  bubble(GREETING, "bot");
+  history.forEach(m => bubble(m.text, m.role === "user" ? "me" : "bot"));
+}
+
+async function ask(text){
+  text = text.trim();
+  if (!text || send.disabled) return;
+  history.push({ role: "user", text });
+  save();
+  bubble(text, "me");
+  msg.value = "";
+  send.disabled = true;
+
+  const wait = document.createElement("div");
+  wait.className = "m bot typing";
+  wait.innerHTML = "<span></span><span></span><span></span>";
+  log.appendChild(wait);
+  log.scrollTop = log.scrollHeight;
+
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: history, plant: plant.value.trim() })
+    });
+    const data = await r.json();
+    wait.remove();
+    if (!r.ok) { bubble(data.error || "Something went wrong. Try again.", "bot err"); history.pop(); save(); return; }
+    history.push({ role: "model", text: data.reply });
+    save();
+    bubble(data.reply, "bot");
+  } catch {
+    wait.remove();
+    bubble("Could not reach the server. Is it running?", "bot err");
+    history.pop(); save();
+  } finally {
+    send.disabled = false;
+    msg.focus();
+  }
+}
+
+send.addEventListener("click", () => ask(msg.value));
+msg.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(msg.value); } });
+document.querySelectorAll(".chips button").forEach(b => b.addEventListener("click", () => ask(b.dataset.q)));
+plant.addEventListener("input", () => { try { localStorage.setItem("doctorPlant", plant.value); } catch {} });
+$("clear").addEventListener("click", () => { history = []; save(); render(); });
+
+render();
+</script>
+</body>
+</html>
